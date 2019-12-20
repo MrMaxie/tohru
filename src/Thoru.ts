@@ -247,8 +247,6 @@ export default (options: TohruOptions) => {
             return ctx.clientEval(({ document }, { target, time }) => {
                 return new Promise(res => {
                     const search = () => {
-                        console.log(target);
-                        console.log(document.querySelector(target));
                         if (document.querySelector(target)) {
                             res();
                             clearInterval(interval);
