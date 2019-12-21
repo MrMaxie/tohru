@@ -22,6 +22,7 @@ app.on('ready', () => {
     socket.on('host:eval', (fn: string, param: any) => {
         try {
             Promise.resolve(eval(fn)({
+                app,
                 window: win,
                 webContents: win.webContents,
             }, param))
