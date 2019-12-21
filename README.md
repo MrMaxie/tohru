@@ -157,8 +157,8 @@ const p1 = ctx.clientEval((ctx, [ x2, x3 ]) => {
     console.log(ctx); // ClientContext described below
     console.log(x1); // => undefined
     console.log(x2); // => 20
-    console.log(x3); // => undefined
-    console.log(x4); // => 30
+    console.log(x3); // => 40
+    console.log(x4); // => undefined
     y1 += 10; // => Uncaught ReferenceError: y1 is not defined
     return 20;
 }, [ x2, x4 ]).then(result => {
@@ -169,8 +169,8 @@ const p2 = ctx.hostEval((ctx, [ x2, x3 ]) => {
     console.log(ctx); // HostContext described below
     console.log(x1); // => undefined
     console.log(x2); // => 10
-    console.log(x3); // => undefined
-    console.log(x4); // => 30
+    console.log(x3); // => 40
+    console.log(x4); // => undefined
     y1 += 10; // => Uncaught ReferenceError: y1 is not defined
     return 30;
 }, [ x1, x4 ]).then(result => {
