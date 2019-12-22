@@ -1,1 +1,1 @@
-export { default as Tohru } from './Thoru';
+export { default as Tohru } from './Tohru';

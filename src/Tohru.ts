@@ -1,32 +1,48 @@
-import { spawn, ChildProcess } from 'child_process';
-import path from 'path';
-import portfinder from 'portfinder';
-import Context from './Context';
+import Logger, { Level } from './Logger';
+import Browser from './Browser';
+import Queue from './Queue';
 
-type TohruOptions = {
+export type TohruOptions = {
     electron: string;
     tickRate?: number;
     timeout?: number;
     typeInterval?: number;
     pollInterval?: number;
+    logLevel?: Level;
+    defaultLogger?: boolean;
+    requirePath?: string;
 };
 
-type TohruContext = {};
-
-type TohruInterface = {};
-
-type Action = (...params: any[]) => TohruInterface;
-
-type Reaction = (context: Context, ...params: any[]) => any;
-
 export default (options: TohruOptions) => {
-    const opts: Required<TohruOptions> = Object.assign({
+    const _options = Object.assign({
         tickRate: 500,
-        timeout: 60000 * 10,
+        timeout: 10000,
         typeInterval: 50,
         pollInterval: 50,
-    }, options);
+        logLevel: Level.Error,
+        defaultLogger: true,
+        requirePath: process.cwd(),
+    }, options) as Required<TohruOptions>;
 
+    const logger = new Logger();
+
+    logger.setLevel(_options.logLevel);
+
+    if (_options.defaultLogger) {
+        logger.startDefaultLogger();
+    }
+
+    const browser = new Browser(
+        logger,
+        _options.electron,
+        _options.requirePath,
+    );
+
+    const queue = new Queue(logger, browser, _options);
+
+    return queue.actions;
+
+    /*
     let proc: ChildProcess | false = false;
 
     let timeoutTimeout: NodeJS.Timeout | false = false;
@@ -295,6 +311,7 @@ export default (options: TohruOptions) => {
             });
         }, { selector, text, time: opts.pollInterval });
     });
+    */
     /*
     type(selector: string, text: string) {
         return this;
@@ -398,6 +415,4 @@ export default (options: TohruOptions) => {
         return this;
     }
     */
-
-    return actions;
 }

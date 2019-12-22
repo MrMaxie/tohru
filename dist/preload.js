@@ -1,20 +1,63 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const electron_1 = require("electron");
-electron_1.ipcRenderer.on('eval', (e, fn, param) => {
+const require_at_1 = tslib_1.__importDefault(require("require-at"));
+const util_1 = require("util");
+const requirePath = process.argv.pop();
+const _require = require;
+try {
+    require = require_at_1.default(requirePath);
+}
+catch (e) {
+    electron_1.ipcRenderer.send('error', `browser -> ${e.message}`);
+}
+const cl = console.log;
+const ce = console.error;
+const ci = console.info;
+const cw = console.warn;
+console.log = (...data) => {
+    if (data.length > 0 && /Electron Security Warning/.test(data[0])) {
+        return;
+    }
+    electron_1.ipcRenderer.send('info', `browser -> ${util_1.inspect(data)}`);
+    return cl(...data);
+};
+console.error = (...data) => {
+    if (data.length > 0 && /Electron Security Warning/.test(data[0])) {
+        return;
+    }
+    electron_1.ipcRenderer.send('error', `browser -> ${util_1.inspect(data)}`);
+    return ce(...data);
+};
+console.info = (...data) => {
+    if (data.length > 0 && /Electron Security Warning/.test(data[0])) {
+        return;
+    }
+    electron_1.ipcRenderer.send('info', `browser -> ${util_1.inspect(data)}`);
+    return ci(...data);
+};
+console.warn = (...data) => {
+    if (data.length > 0 && /Electron Security Warning/.test(data[0])) {
+        return;
+    }
+    electron_1.ipcRenderer.send('warning', `browser -> ${util_1.inspect(data)}`);
+    return cw(...data);
+};
+window.addEventListener('error', e => {
+    console.error('error', e.message);
+});
+electron_1.ipcRenderer.on('eval', (e, fn, id, ...params) => {
     try {
-        Promise.resolve(eval(fn)({
-            window,
-            document,
-        }, param))
-            .then(res => {
-            electron_1.ipcRenderer.send('done', res);
+        Promise.resolve(eval(fn)(...params))
+            .then((...res) => {
+            electron_1.ipcRenderer.send(`done:${id}`, 'then', ...res);
         })
-            .catch(err => {
-            electron_1.ipcRenderer.send('error', err);
+            .catch((...err) => {
+            electron_1.ipcRenderer.send(`done:${id}`, 'then', ...err);
         });
     }
-    catch (er) {
-        electron_1.ipcRenderer.send('done', er);
+    catch (err) {
+        electron_1.ipcRenderer.send('critical', err);
     }
 });

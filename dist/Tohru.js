@@ -1,32 +1,59 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const child_process_1 = require("child_process");
-const path_1 = tslib_1.__importDefault(require("path"));
-const portfinder_1 = tslib_1.__importDefault(require("portfinder"));
-const Context_1 = tslib_1.__importDefault(require("./Context"));
+const Logger_1 = tslib_1.__importStar(require("./Logger"));
+const Browser_1 = tslib_1.__importDefault(require("./Browser"));
+const Queue_1 = tslib_1.__importDefault(require("./Queue"));
 exports.default = (options) => {
-    const opts = Object.assign({
+    const _options = Object.assign({
         tickRate: 500,
-        timeout: 60000 * 10,
+        timeout: 10000,
         typeInterval: 50,
         pollInterval: 50,
+        logLevel: Logger_1.Level.Error,
+        defaultLogger: true,
+        requirePath: process.cwd(),
     }, options);
-    let proc = false;
-    let timeoutTimeout = false;
-    let tickTimeout = false;
-    const queue = [];
+    const logger = new Logger_1.default();
+    logger.setLevel(_options.logLevel);
+    if (_options.defaultLogger) {
+        logger.startDefaultLogger();
+    }
+    const browser = new Browser_1.default(logger, _options.electron, _options.requirePath);
+    const queue = new Queue_1.default(logger, browser, _options);
+    return queue.actions;
+    /*
+    let proc: ChildProcess | false = false;
+
+    let timeoutTimeout: NodeJS.Timeout | false = false;
+
+    let tickTimeout: NodeJS.Timeout | false = false;
+
+    const queue: Array<{
+        name: string;
+        params: any[];
+    }> = [];
+
     // Exposed object
-    const actions = {};
+    const actions: {
+        [name: string]: Action;
+    } = {};
+
     // Internal object
-    const reactions = {};
-    let thenFn = false;
-    let catchFn = false;
-    const context = new Context_1.default;
+    const reactions: {
+        [name: string]: Reaction;
+    } = {};
+
+    let thenFn: (() => {}) | false = false;
+
+    let catchFn: ((reason: string) => {}) | false = false;
+
+    const context: Context = new Context;
+
     const tryKillProcess = () => {
         if (proc) {
             isDone = true;
-            proc.stdin.pause();
+            (proc as any).stdin.pause();
             proc.kill('SIGKILL');
             proc = false;
             context.stop();
@@ -38,52 +65,66 @@ exports.default = (options) => {
             }
         }
     };
-    const throwError = (reason) => {
+
+    const throwError = (reason: string) => {
         tryKillProcess();
+
         if (catchFn) {
             catchFn(reason);
             return;
         }
+
         throw new Error(reason);
     };
+
     process.on('beforeExit', () => {
         tryKillProcess();
     });
+
     let isWorking = false;
+
     let isDone = false;
+
     const start = () => {
         if (isDone) {
             return;
         }
-        portfinder_1.default.getPort((err, port) => {
+
+        portfinder.getPort((err, port) => {
             if (err) {
                 throwError(err.message);
                 return;
             }
+
             context.stop();
             context.start(port);
+
             context.once('connected', () => {
                 console.log('# connected');
                 isWorking = false;
                 nextStep();
             });
-            proc = child_process_1.spawn(opts.electron, [path_1.default.resolve(__dirname, './host.js'), String(port)]);
+
+            proc = spawn(opts.electron, [path.resolve(__dirname, './host.js'), String(port)]);
             proc.on('error', error => {
                 if (isDone) {
                     return;
                 }
+
                 throwError(`${error.name} - ${error.message}`);
             });
             proc.on('disconnect', () => {
                 if (isDone) {
                     return;
                 }
+
                 throwError(`Process has been disconnected...`);
             });
             proc.on('close', code => {
                 if (isDone) {
                     return;
                 }
+
                 if (code !== 0) {
                     throwError(`Process has been terminated with non-zero code...`);
                 }
@@ -92,27 +133,34 @@ exports.default = (options) => {
                 if (isDone) {
                     return;
                 }
+
                 if (code !== 0) {
                     throwError(`Process has been terminated with non-zero code...`);
                 }
             });
         });
     };
+
     const nextStep = () => {
         if (isWorking) {
             return;
         }
+
         isWorking = true;
+
         if (proc === false || proc.killed === true) {
             start();
             return;
         }
+
         if (timeoutTimeout) {
             clearTimeout(timeoutTimeout);
         }
+
         timeoutTimeout = setTimeout(() => {
             throwError(`There was no operation for too long...`);
         }, opts.timeout);
+
         if (queue.length === 0) {
             if (thenFn) {
                 thenFn();
@@ -120,47 +168,58 @@ exports.default = (options) => {
             }
             return;
         }
+
         const { name, params } = queue.shift();
+
         console.log('-> ', name);
+
         if (!(name in reactions)) {
             if (name in actions) {
                 nextStep();
             }
             return;
         }
+
         const cb = reactions[name];
+
         if (timeoutTimeout) {
             clearTimeout(timeoutTimeout);
         }
+
         tickTimeout = setTimeout(() => {
             tickTimeout = false;
             timeoutTimeout = setTimeout(() => {
                 throwError(`Processing .${name}(${params.map(x => JSON.stringify(x)).join(', ')}) action takes too long...`);
             }, opts.timeout);
+
             Promise.resolve(cb(context, params))
                 .then(() => {
-                isWorking = false;
-                nextStep();
-            })
+                    isWorking = false;
+                    nextStep();
+                })
                 .catch(throwError);
         }, opts.tickRate);
     };
-    actions.pushQueue = (name, params) => {
+
+    actions.pushQueue = (name: string, params: any[]) => {
         queue.push({ name, params });
         nextStep();
         return actions;
     };
-    actions.action = (name, cb) => {
-        actions[name] = (...params) => {
+
+    actions.action = (name: string, cb: (ctx: Context, ...params: any[]) => void) => {
+        actions[name] = (...params: any[]) => {
             actions.pushQueue(name, params);
             return actions;
         };
         reactions[name] = cb;
         return actions;
     };
-    actions.action('goto', (ctx, [url]) => {
+
+    actions.action('goto', (ctx: Context, [ url ]) => {
         return ctx.hostEval(({ window, webContents }, url) => {
             window.loadURL(url);
+
             return new Promise(res => {
                 webContents.once('dom-ready', () => {
                     res();
@@ -168,47 +227,52 @@ exports.default = (options) => {
             });
         }, url);
     });
-    actions.action('then', (ctx, [promise]) => {
+
+    actions.action('then', (ctx: Context, [ promise ]) => {
         return Promise.resolve(promise ? promise() : undefined);
     });
-    actions.action('wait', (ctx, [target]) => {
+
+    actions.action('wait', (ctx: Context, [ target ]) => {
         if (typeof target === 'number') {
             return new Promise(res => {
                 setTimeout(() => {
                     res();
                 }, target);
             });
-        }
-        else {
+        } else {
             return ctx.clientEval(({ document }, { target, time }) => {
                 return new Promise(res => {
                     const search = () => {
-                        console.log(target);
-                        console.log(document.querySelector(target));
                         if (document.querySelector(target)) {
                             res();
                             clearInterval(interval);
                         }
                     };
+
                     const interval = setInterval(search, time);
                     search();
                 });
             }, { target, time: opts.pollInterval });
         }
     });
+
     actions.action('end', () => {
         tryKillProcess();
     });
-    actions.action('type', (ctx, [selector, text]) => {
+
+    actions.action('type', (ctx: Context, [ selector, text ]) => {
         return ctx.clientEval(({ document }, { selector, text, time }) => {
             return new Promise((res, rej) => {
                 console.log(selector, text, time);
+
                 const chars = text.split('');
                 const el = document.querySelector(selector);
+
                 if (!el) {
                     rej(`Cannot find element ${el}`);
                     return;
                 }
+
                 el.focus();
                 const interval = setInterval(() => {
                     if (chars.length === 0) {
@@ -216,6 +280,7 @@ exports.default = (options) => {
                         clearInterval(interval);
                         return;
                     }
+
                     const char = chars.shift();
                     const ev = new KeyboardEvent('keyup', {
                         key: char,
@@ -226,6 +291,7 @@ exports.default = (options) => {
             });
         }, { selector, text, time: opts.pollInterval });
     });
+    */
     /*
     type(selector: string, text: string) {
         return this;
@@ -329,5 +395,4 @@ exports.default = (options) => {
         return this;
     }
     */
-    return actions;
 };
