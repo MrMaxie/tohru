@@ -16,6 +16,23 @@ type Action<T> = {
     fn: (ctx: Context, ...params: T[]) => void;
 };
 
+const Actions = [
+    'then',
+    'catch',
+    'end',
+    'action',
+    'goto',
+    'type',
+    'wait',
+];
+
+const ProtectedActions = [
+    'then',
+    'catch',
+    'end',
+    'action',
+];
+
 export default class Queue {
     private isWorking = false;
 
@@ -47,15 +64,7 @@ export default class Queue {
             this.end();
         });
 
-        [
-            'then',
-            'catch',
-            'end',
-            'action',
-            'goto',
-            'type',
-            'wait',
-        ].forEach(name => {
+        Actions.forEach(name => {
             this.register(name, this[name]);
         });
     }
@@ -200,6 +209,10 @@ export default class Queue {
     }
 
     action = (ctx: Context, name: string, cb: (ctx: Context, ...params: any[]) => void) => {
+        if (ProtectedActions.indexOf(name) !== -1) {
+            this.logger.warning('action name %s is protected and cannot be overridden', name);
+            return;
+        }
         this.register(name, cb);
     }
 

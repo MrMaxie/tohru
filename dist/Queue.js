@@ -1,5 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const Actions = [
+    'then',
+    'catch',
+    'end',
+    'action',
+    'goto',
+    'type',
+    'wait',
+];
+const ProtectedActions = [
+    'then',
+    'catch',
+    'end',
+    'action',
+];
 class Queue {
     constructor(logger, browser, config) {
         this.logger = logger;
@@ -30,6 +45,10 @@ class Queue {
             this.browser.kill();
         };
         this.action = (ctx, name, cb) => {
+            if (ProtectedActions.indexOf(name) !== -1) {
+                this.logger.warning('action name %s is protected and cannot be overridden', name);
+                return;
+            }
             this.register(name, cb);
         };
         this.goto = (ctx, url) => {
@@ -98,15 +117,7 @@ class Queue {
         process.on('beforeExit', () => {
             this.end();
         });
-        [
-            'then',
-            'catch',
-            'end',
-            'action',
-            'goto',
-            'type',
-            'wait',
-        ].forEach(name => {
+        Actions.forEach(name => {
             this.register(name, this[name]);
         });
     }

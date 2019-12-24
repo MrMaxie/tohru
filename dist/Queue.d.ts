@@ -12,6 +12,7 @@ declare type Action<T> = {
     push: (...params: T[]) => Actions;
     fn: (ctx: Context, ...params: T[]) => void;
 };
+declare const Actions: string[];
 export default class Queue {
     private logger;
     private browser;

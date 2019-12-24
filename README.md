@@ -55,6 +55,41 @@ API base on actions model, flow of this model looks like this:
 2. Use registered action with needed arguments.
 3. Tohru will add this action into queue, and will run it after previously actions.
 
+## Instance
+
+Tohru instance can be only created via exported function
+
+```javascript
+// ES6+ or TypeScript
+import { Tohru } from 'tohru';
+// ES5
+const Tohru = require('tohru');
+
+const tohruInstance = Tohru({
+    // settings
+});
+```
+
+Every action returns actions list, so you can to make chain
+
+## Settings
+
+Settings can contains given properties:
+- `electron: string` - electron executable path
+- `tickRate?: number` - time in ms between actions, default: `500`
+- `timeout?: number` - time in ms how long every action can work, after that time error will be thrown, default: `10000`
+- `typeInterval?: number` - time in ms how long `.type()` should wait before firing each key, default: `100`
+- `pollInterval?: number` - time in ms how long `.wait()` should wait before each searching, default: `50`
+- `logLevel?: LogLevels` - level of reporting, all equal and higher messages will be reported, default: `3`
+  - `5` - None
+  - `4` - Critical
+  - `3` - Error
+  - `2` - Warning
+  - `1` - Info
+  - `0` - Debug
+- `defaultLogger?: boolean` - if true Tohru will setup inner logger for loggin purposes, default: `false`
+- `requirePath?: string` - directory of your project, this path will be used to run `require` from your project, default: `process.cwd()`
+
 ## Actions
 
 Actions are registered only in one instance of Tohru at the same time, so if you need to run those actions in multiple instances, you will need to prepare setup function. Registering such action looks like this:
@@ -106,42 +141,75 @@ tohruInstance
 
 In all those examples is also context, which is descibed below.
 
+## Internal Actions
+
+Few actions are registered at start of Tohru. Some of those actions are prepared, some are protected.
+
+- `then(cb)` **(protected)** - setup callback function that will be runned once when queue of actions will be empty
+  - `cb: () => void` - callback
+- `catch(cb)` **(protected)** - setup callback function that will be runned once when critical error occurs
+  - `cb: (message: string) => void` - callback
+- `end()` **(protected)** - closes all browsers and servers attached to this tohru instance
+- `action(name, cb)` **(protected)** - push new action
+  - `name: string` - unique name of action
+  - `cb: (...params) => any` - callback with params of your choice and return promise-like or just plain value
+- `goto(url)` - redirects to given path
+  - `url: string`
+- `type(selector, text)` - simulates human-way of typing text
+  - `selector: string` - selector, target of events
+  - `text: string`
+- `wait(target)` - waits until given selector will be available or given time in ms
+  - `target: string | number` - selector string or time in ms
+
 ## Context
 
 It's most magic thing in whole project. Allows you to eval (yes, it's this prohibited function) code inside of Electron "host" and Browser window aka "client". So let's hack!
 
-- `hostEval(cb, params)`
+### `host(cb:, ...params) => Promise<unknown>`
 
-Allows you to execute code inside of host. Example usage looks like this:
+Allows you to execute code inside of host, and returns promise. Inside of callback you have access to host scope, so given variables are available:
 
-```javascript
-ctx.hostEval(({ window, webContents }, url) => {
-    window.loadURL(url);
+- `app` - `Electron.App` object
+- `window` - `Electron.BrowserWindow` object
+- `require` - function allowing you to require like in your project
 
-    return new Promise(res => {
-        webContents.once('dom-ready', res);
-    });
-}, 'https://google.com/');
-```
-
-- `clientEval(cb, params)`
-
-Allows you to execute code inside of client. Example usage looks like this:
+Example usage looks like this:
 
 ```javascript
-ctx.clientEval(({ document }) => {
-    return new Promise((res, rej) => {
-        document.querySelector(target) ? res() : rej();
-    });
+tohruInstance.action('someAction', ctx => {
+    return ctx.host(url => {
+        window.loadURL(url);
+
+        return new Promise(res => {
+            webContents.once('dom-ready', res);
+        });
+    }, 'https://google.com/');
 });
 ```
 
-In both cases you can to send 1-2 arguments:
+### `client(cb, ...params) => Promise<unknown>`
 
-1. Function that will be changed into string and send to host that's why you don't have possibility pass variables thru JS itself.
-2. Optional argument which allows you to pass those needed argument for receiever.
+Allows you to execute code inside of client, and returns promise. Inside of callback you have access to browser scope, so you can to use all objects like `window`, `document` etc., additionaly there are `require` which allows you to require like in your project. Example usage looks like this:
 
-**How to operate on such a limited scope?**
+```javascript
+tohruInstance.action('someAction', ctx => {
+    return ctx.client(target => {
+        return new Promise((res, rej) => {
+            document.querySelector(target) ? res() : rej();
+        });
+    }, '.button');
+});
+```
+
+### How it works?
+
+First argument have to be function that will be changed into string and send to host that's why you don't have possibility pass variables thru JS itself.
+
+All next arguments are optional, they allow you to pass variables to host/client scope. They will be used to execute your function from first argument in the same order.
+
+### How to operate on such a limited scope?
+
+Here you have little example, how it works:
 
 ```javascript
 const x1 = 10;
@@ -153,27 +221,25 @@ let y1 = 10;
 let y2 = null;
 let y3 = null;
 
-const p1 = ctx.clientEval((ctx, [ x2, x3 ]) => {
-    console.log(ctx); // ClientContext described below
-    console.log(x1); // => undefined
+const p1 = ctx.clientEval(([ x2, x3 ], x1) => {
+    console.log(x1); // => 30
     console.log(x2); // => 20
     console.log(x3); // => 40
     console.log(x4); // => undefined
     y1 += 10; // => Uncaught ReferenceError: y1 is not defined
     return 20;
-}, [ x2, x4 ]).then(result => {
+}, [ x2, x4 ], x3).then(result => {
     y2 = result;
 });
 
-const p2 = ctx.hostEval((ctx, [ x2, x3 ]) => {
-    console.log(ctx); // HostContext described below
+const p2 = ctx.hostEval(([ x2, x3 ], x4) => {
     console.log(x1); // => undefined
     console.log(x2); // => 10
     console.log(x3); // => 40
-    console.log(x4); // => undefined
+    console.log(x4); // => 30
     y1 += 10; // => Uncaught ReferenceError: y1 is not defined
     return 30;
-}, [ x1, x4 ]).then(result => {
+}, [ x1, x4 ], x3).then(result => {
     y3 = result;
 });
 
@@ -184,25 +250,11 @@ Promise.all([p1, p2]).then(() => {
 });
 ```
 
-## HostContext
-
-You have full access for all global things, for example `process`, `require` etc., but if you want to get those values, get them from context:
-
-- app - `Electron.App` object
-- window - `Electron.BrowserWindow` object
-- webContents - `Electron.WebContents` object from above window
-
-## ClientContext
-
-You have full access for all global things, for example `document`, `window` etc., but if you want to get those values, get them from context:
-
-- ... 😞 this list is empty at this moment, I don't know what can I expose here
-
-## I want to `require()` library X or file Y from my project inside of host/browser
+### I want to `require()` library X or file Y from my project inside of host/browser
 
 Inside both contextes `require()` will try to find modules inside of your project directory or from your project's root directory.
 
-Real `require()` is moved to `__require()`, so don't worry.
+Real `require()` is moved to `_require()`, so don't worry.
 
 # Licence
 
