@@ -32,7 +32,7 @@ yarn add tohru electron
 Set-up your code, simplest example:
 
 ```javascript
-const Tohru = require('tohru');
+const { Tohru } = require('tohru');
 // Outside of Electron's processes will return string with path of Electron
 const electron = require('electron');
 
@@ -63,7 +63,7 @@ Tohru instance can be only created via exported function
 // ES6+ or TypeScript
 import { Tohru } from 'tohru';
 // ES5
-const Tohru = require('tohru');
+const { Tohru } = require('tohru');
 
 const tohruInstance = Tohru({
     // settings

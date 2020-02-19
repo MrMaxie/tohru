@@ -1,5 +1,6 @@
 import Browser from './Browser';
 import Logger from './Logger';
+import path from 'path';
 import { TohruOptions } from './Tohru';
 
 type Context = {
@@ -24,6 +25,12 @@ const Actions = [
     'goto',
     'type',
     'wait',
+    'click',
+    'clickAll',
+    'authentication',
+    'select',
+    'upload',
+    'focus',
 ];
 
 const ProtectedActions = [
@@ -83,9 +90,9 @@ export default class Queue {
         this.stopNoop();
         this.noopTimeout = setTimeout(() => {
             if (name) {
-                this.logger.error('too long processing %s with params: %s', name, params);
+                this.logger.critical('too long processing %s with params: %s', name, params);
             } else {
-                this.logger.error('there was no operation for too long');
+                this.logger.critical('there was no operation for too long');
             }
             this.end();
         }, this.config.timeout);
@@ -260,14 +267,16 @@ export default class Queue {
         }, selector, text, this.config.pollInterval);
     }
 
-    wait = (ctx: Context, target: string | number) => {
+    wait = (ctx: Context, target?: string | number) => {
         if (typeof target === 'number') {
             return new Promise(res => {
                 setTimeout(() => {
                     res();
                 }, target);
             });
-        } else {
+        }
+
+        if (typeof target === 'string') {
             return ctx.client((target: string, time: number) => {
                 return new Promise(res => {
                     const search = () => {
@@ -282,5 +291,94 @@ export default class Queue {
                 });
             }, target, this.config.pollInterval);
         }
+
+        return Promise.resolve();
+    }
+
+    click = (ctx: Context, selector: string) => {
+        return ctx.client((target: string) => {
+            const el: HTMLElement = document.body.querySelector(target);
+
+            if (el) {
+                el.click();
+            }
+        }, selector);
+    }
+
+    clickAll = (ctx: Context, selector: string) => {
+        return ctx.client((target: string) => {
+            Array.from(document.body.querySelectorAll(target)).forEach((el: HTMLElement) => {
+                el.click();
+            });
+        }, selector);
+    }
+
+    authentication = (ctx: Context, login: string, password: string) => {
+        return ctx.host((l: string, p: string) => {
+            app.once('login', (e, w, d, a, cb) => {
+                e.preventDefault();
+                cb(l, p);
+            });
+        }, login, password);
+    }
+
+    select = (ctx: Context, selector: string, option: string | number) => {
+        return ctx.client((target: string) => {
+            const el: HTMLSelectElement = document.body.querySelector(target);
+
+            if (!el) {
+                return;
+            }
+
+            const done = Array.from(el.querySelectorAll('option'))
+                .filter(x => x.innerText === String(option))
+                .some(x => {
+                    el.value = String(x.value);
+                    return true;
+                });
+
+            if (done) {
+                return;
+            }
+
+            if (typeof option === 'string') {
+                el.value = option;
+                return;
+            }
+
+            if (typeof option === 'number') {
+                el.selectedIndex = option;
+                return;
+            }
+        }, selector);
+    }
+
+    upload = (ctx: Context, selector: string, ...files: string[]) => {
+        files = files.map(x => path.resolve(this.config.assetsPath, x));
+
+        return ctx.host((target: string, paths: string[]) => {
+            const el: HTMLInputElement = document.body.querySelector(target);
+
+            if (!el) {
+                return Promise.resolve();
+            }
+
+            return new Promise(res => {
+                const files = paths
+                    .map(x => require('fs').readFileSync(x))
+                    .map(x => new Buffer(x).toString('base64'))
+                    .map(x => fetch(x).then(res => res.blob()));
+
+                Promise.all(files).then(blobs => {
+                    const dt = new DataTransfer();
+                    blobs.forEach((file, i) => {
+                        dt.items.add(new File([file], `${i}-file.jpg`));
+                    });
+                    el.files = dt.files;
+
+                    res();
+                });
+            });
+        }, selector, files);
     }
 }

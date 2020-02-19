@@ -4,7 +4,7 @@
     "target": "ES2018",
     "jsx": "react",
     "baseUrl": ".",
-    "importHelpers": true,
+    "importHelpers": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "moduleResolution": "node",
@@ -12,7 +12,8 @@
     "sourceMap": false,
     "declaration": true,
     "outDir": "./dist",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "noImplicitUseStrict": true
   },
   "include": [
     "./src/**/*"

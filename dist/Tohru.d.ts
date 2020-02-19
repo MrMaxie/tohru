@@ -6,8 +6,10 @@ export declare type TohruOptions = {
     typeInterval?: number;
     pollInterval?: number;
     logLevel?: Level;
+    throwLevel?: Level;
     defaultLogger?: boolean;
     requirePath?: string;
+    assetsPath?: string;
 };
 declare const _default: (options: TohruOptions) => {
     [name: string]: (ctx: {

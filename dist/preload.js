@@ -1,8 +1,9 @@
-"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
 const electron_1 = require("electron");
-const require_at_1 = tslib_1.__importDefault(require("require-at"));
+const require_at_1 = __importDefault(require("require-at"));
 const util_1 = require("util");
 const requirePath = process.argv.pop();
 const _require = require;

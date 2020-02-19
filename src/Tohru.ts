@@ -9,8 +9,10 @@ export type TohruOptions = {
     typeInterval?: number;
     pollInterval?: number;
     logLevel?: Level;
+    throwLevel?: Level;
     defaultLogger?: boolean;
     requirePath?: string;
+    assetsPath?: string;
 };
 
 export default (options: TohruOptions) => {
@@ -20,13 +22,16 @@ export default (options: TohruOptions) => {
         typeInterval: 100,
         pollInterval: 50,
         logLevel: Level.Error,
+        throwLevel: Level.Critical,
         defaultLogger: false,
         requirePath: process.cwd(),
+        assetsPath: process.cwd(),
     }, options) as Required<TohruOptions>;
 
     const logger = new Logger();
 
     logger.setLevel(_options.logLevel);
+    logger.setThrowLevel(_options.throwLevel);
 
     if (_options.defaultLogger) {
         logger.startDefaultLogger();

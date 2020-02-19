@@ -10,7 +10,9 @@ export declare enum Level {
 }
 export default class Logger extends EventEmitter {
     level: Level;
+    throwLevel: Level;
     setLevel(level: Level): void;
+    setThrowLevel(level: Level): void;
     getName(level: Level): string;
     log(type: Level, message: string, ...args: any[]): void;
     critical(message: string, ...args: any[]): void;
@@ -19,4 +21,6 @@ export default class Logger extends EventEmitter {
     info(message: string, ...args: any[]): void;
     debug(message: string, ...args: any[]): void;
     startDefaultLogger(): void;
+    format(message: string, ...args: any[]): string;
+    formatWoColors(message: string, ...args: any[]): string;
 }

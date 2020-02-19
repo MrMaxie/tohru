@@ -1,11 +1,12 @@
-"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
 const child_process_1 = require("child_process");
-const portfinder_1 = tslib_1.__importDefault(require("portfinder"));
-const path_1 = tslib_1.__importDefault(require("path"));
-const socket_io_1 = tslib_1.__importDefault(require("socket.io"));
-const http_1 = tslib_1.__importDefault(require("http"));
+const portfinder_1 = __importDefault(require("portfinder"));
+const path_1 = __importDefault(require("path"));
+const socket_io_1 = __importDefault(require("socket.io"));
+const http_1 = __importDefault(require("http"));
 class Browser {
     constructor(logger, electronPath, requirePath) {
         this.logger = logger;

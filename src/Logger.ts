@@ -44,8 +44,14 @@ const LevelColor = {
 export default class Logger extends EventEmitter {
     level: Level = Level.Error;
 
+    throwLevel: Level = Level.Critical;
+
     setLevel(level: Level) {
         this.level = level;
+    }
+
+    setThrowLevel(level: Level) {
+        this.throwLevel = level;
     }
 
     getName(level: Level) {
@@ -57,13 +63,16 @@ export default class Logger extends EventEmitter {
             return;
         }
 
+        if (type >= this.throwLevel) {
+            throw new Error(this.formatWoColors(message, ...args));
+        }
+
         if (type < this.level) {
             return;
         }
 
         this.emit('logLeveled', type, message, ...args);
         this.emit('log', this.getName(type), message, ...args);
-        this.emit(this.getName(type), message, ...args);
     }
 
     critical(message: string, ...args: any[]) {
@@ -87,7 +96,7 @@ export default class Logger extends EventEmitter {
     }
 
     startDefaultLogger() {
-        this.on('logLeveled', (type: Level, message: string, ...args: any[]) => {
+        this.on('logLeveled', (type: Level, message: string) => {
             console.log([
                 TermColor.Gray,
                 '\[',
@@ -98,8 +107,16 @@ export default class Logger extends EventEmitter {
                 '\]',
                 TermColor.Reset,
                 '\t',
-                format(message, ...args.map(x => inspect(x, false, 3, true))),
+                message,
             ].join(''));
         });
+    }
+
+    format(message: string, ...args: any[]) {
+        return format(message, ...args.map(x => inspect(x, false, 3, true)));
+    }
+
+    formatWoColors(message: string, ...args: any[]) {
+        return format(message, ...args.map(x => inspect(x, false, 3, false)));
     }
 }

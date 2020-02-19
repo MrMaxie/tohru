@@ -1,7 +1,8 @@
-"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
-const events_1 = tslib_1.__importDefault(require("events"));
+const events_1 = __importDefault(require("events"));
 const util_1 = require("util");
 var Level;
 (function (Level) {
@@ -45,9 +46,13 @@ class Logger extends events_1.default {
     constructor() {
         super(...arguments);
         this.level = Level.Error;
+        this.throwLevel = Level.Critical;
     }
     setLevel(level) {
         this.level = level;
+    }
+    setThrowLevel(level) {
+        this.throwLevel = level;
     }
     getName(level) {
         return LevelName[level];
@@ -56,12 +61,14 @@ class Logger extends events_1.default {
         if (type === Level.None) {
             return;
         }
+        if (type >= this.throwLevel) {
+            throw new Error(this.formatWoColors(message, ...args));
+        }
         if (type < this.level) {
             return;
         }
         this.emit('logLeveled', type, message, ...args);
         this.emit('log', this.getName(type), message, ...args);
-        this.emit(this.getName(type), message, ...args);
     }
     critical(message, ...args) {
         this.log(Level.Critical, message, ...args);
@@ -79,7 +86,7 @@ class Logger extends events_1.default {
         this.log(Level.Debug, message, ...args);
     }
     startDefaultLogger() {
-        this.on('logLeveled', (type, message, ...args) => {
+        this.on('logLeveled', (type, message) => {
             console.log([
                 TermColor.Gray,
                 '\[',
@@ -90,9 +97,15 @@ class Logger extends events_1.default {
                 '\]',
                 TermColor.Reset,
                 '\t',
-                util_1.format(message, ...args.map(x => util_1.inspect(x, false, 3, true))),
+                message,
             ].join(''));
         });
+    }
+    format(message, ...args) {
+        return util_1.format(message, ...args.map(x => util_1.inspect(x, false, 3, true)));
+    }
+    formatWoColors(message, ...args) {
+        return util_1.format(message, ...args.map(x => util_1.inspect(x, false, 3, false)));
     }
 }
 exports.default = Logger;

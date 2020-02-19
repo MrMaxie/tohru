@@ -1,5 +1,8 @@
-"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const path_1 = __importDefault(require("path"));
 const Actions = [
     'then',
     'catch',
@@ -8,6 +11,12 @@ const Actions = [
     'goto',
     'type',
     'wait',
+    'click',
+    'clickAll',
+    'authentication',
+    'select',
+    'upload',
+    'focus',
 ];
 const ProtectedActions = [
     'then',
@@ -96,7 +105,7 @@ class Queue {
                     }, target);
                 });
             }
-            else {
+            if (typeof target === 'string') {
                 return ctx.client((target, time) => {
                     return new Promise(res => {
                         const search = () => {
@@ -110,6 +119,78 @@ class Queue {
                     });
                 }, target, this.config.pollInterval);
             }
+            return Promise.resolve();
+        };
+        this.click = (ctx, selector) => {
+            return ctx.client((target) => {
+                const el = document.body.querySelector(target);
+                if (el) {
+                    el.click();
+                }
+            }, selector);
+        };
+        this.clickAll = (ctx, selector) => {
+            return ctx.client((target) => {
+                Array.from(document.body.querySelectorAll(target)).forEach((el) => {
+                    el.click();
+                });
+            }, selector);
+        };
+        this.authentication = (ctx, login, password) => {
+            return ctx.host((l, p) => {
+                app.once('login', (e, w, d, a, cb) => {
+                    e.preventDefault();
+                    cb(l, p);
+                });
+            }, login, password);
+        };
+        this.select = (ctx, selector, option) => {
+            return ctx.client((target) => {
+                const el = document.body.querySelector(target);
+                if (!el) {
+                    return;
+                }
+                const done = Array.from(el.querySelectorAll('option'))
+                    .filter(x => x.innerText === String(option))
+                    .some(x => {
+                    el.value = String(x.value);
+                    return true;
+                });
+                if (done) {
+                    return;
+                }
+                if (typeof option === 'string') {
+                    el.value = option;
+                    return;
+                }
+                if (typeof option === 'number') {
+                    el.selectedIndex = option;
+                    return;
+                }
+            }, selector);
+        };
+        this.upload = (ctx, selector, ...files) => {
+            files = files.map(x => path_1.default.resolve(this.config.assetsPath, x));
+            return ctx.host((target, paths) => {
+                const el = document.body.querySelector(target);
+                if (!el) {
+                    return Promise.resolve();
+                }
+                return new Promise(res => {
+                    const files = paths
+                        .map(x => require('fs').readFileSync(x))
+                        .map(x => new Buffer(x).toString('base64'))
+                        .map(x => fetch(x).then(res => res.blob()));
+                    Promise.all(files).then(blobs => {
+                        const dt = new DataTransfer();
+                        blobs.forEach((file, i) => {
+                            dt.items.add(new File([file], `${i}-file.jpg`));
+                        });
+                        el.files = dt.files;
+                        res();
+                    });
+                });
+            }, selector, files);
         };
         logger.on('critical', () => {
             this.end();
@@ -132,10 +213,10 @@ class Queue {
         this.stopNoop();
         this.noopTimeout = setTimeout(() => {
             if (name) {
-                this.logger.error('too long processing %s with params: %s', name, params);
+                this.logger.critical('too long processing %s with params: %s', name, params);
             }
             else {
-                this.logger.error('there was no operation for too long');
+                this.logger.critical('there was no operation for too long');
             }
             this.end();
         }, this.config.timeout);
