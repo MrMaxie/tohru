@@ -87,8 +87,11 @@ Settings can contains given properties:
   - `2` - Warning
   - `1` - Info
   - `0` - Debug
+- `throwLevel?: LogLevels` - level of reporting which throw an error and halt app, default: `2`
+  - same like above
 - `defaultLogger?: boolean` - if true Tohru will setup inner logger for loggin purposes, default: `false`
 - `requirePath?: string` - directory of your project, this path will be used to run `require` from your project, default: `process.cwd()`
+- `assetsPath?: string` - root path for uploads, default: `process.cwd()`
 
 ## Actions
 
@@ -145,21 +148,68 @@ In all those examples is also context, which is descibed below.
 
 Few actions are registered at start of Tohru. Some of those actions are prepared, some are protected.
 
-- `then(cb)` **(protected)** - setup callback function that will be runned once when queue of actions will be empty
-  - `cb: () => void` - callback
-- `catch(cb)` **(protected)** - setup callback function that will be runned once when critical error occurs
-  - `cb: (message: string) => void` - callback
-- `end()` **(protected)** - closes all browsers and servers attached to this tohru instance
-- `action(name, cb)` **(protected)** - push new action
-  - `name: string` - unique name of action
-  - `cb: (...params) => any` - callback with params of your choice and return promise-like or just plain value
-- `goto(url)` - redirects to given path
-  - `url: string`
-- `type(selector, text)` - simulates human-way of typing text
-  - `selector: string` - selector, target of events
-  - `text: string`
-- `wait(target)` - waits until given selector will be available or given time in ms
-  - `target: string | number` - selector string or time in ms
+`then(cb)` **(protected)** - setup callback function that will be runned once when queue of actions will be empty
+- `cb: () => void` - callback
+
+---
+
+`catch(cb)` **(protected)** - setup callback function that will be runned once when critical error occurs
+- `cb: (message: string) => void` - callback
+
+---
+
+`end()` **(protected)** - closes all browsers and servers attached to this tohru instance
+
+---
+
+`action(name, cb)` **(protected)** - push new action
+- `name: string` - unique name of action
+- `cb: (...params) => any` - callback with params of your choice and return promise-like or just plain value
+
+---
+
+`goto(url)` - redirects to given path
+- `url: string`
+
+---
+
+`type(selector, text)` - simulates human-way of typing text
+- `selector: string` - selector, target of events
+- `text: string`
+
+---
+
+`wait(target)` - waits until given selector will be available or given time in ms
+- `target: string | number` - selector string or time in ms
+
+---
+
+`click(selector)` - clicks element
+- `selector: string` - selector, target of events
+
+
+---
+
+`clickAll(selector)` - clicks all elements
+- `selector: string` - selector, target of events
+
+---
+
+`authentication(login, password)` - allows pass though first native authentication prompt
+- `login: string`
+- `password: string`
+
+---
+
+`select(selector, option)` - select option in select input
+- `selector: string`
+- `option: string | number` - visible name, value string or index of option
+
+---
+
+`upload(selector, ...files)` - allows upload files into input upload type
+- `selector: string`
+- `...files: string[]` - relative paths for images from assets path (check initialization options)
 
 ## Context
 
