@@ -1,16 +1,22 @@
 const electron = require('electron');
 const { Tohru } = require('./dist/main');
 
-const t = Tohru({
+Tohru({
     electron,
     logLevel: 0,
     timeout: 10000,
     defaultLogger: true,
-});
-
-console.log(t.action.toString());
-
-t
+})
+    .procedure('test2', p => {
+        p
+            .goto('https://youtube.com/')
+            .wait(2000)
+            .goto('https://deviantart.com/')
+            .wait(2000)
+            .goto('https://wallhaven.cc/')
+            .wait(2000)
+    })
+    .test2()
     .action('test', () => {
         console.log('test!');
     })
@@ -22,5 +28,5 @@ t
     .type('input[name="q"]', 'Github MrMaxie')
     .wait(2000)
     .click('[type="submit"]')
-    .wait()
+    .test2()
     .end();

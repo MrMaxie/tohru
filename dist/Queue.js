@@ -17,11 +17,16 @@ const Actions = [
     'upload',
     'focus',
 ];
-const ProtectedActions = [
+const Procedures = [
+    'action',
+    'procedure',
+];
+const ProtectedActionsAndProcedures = [
+    'action',
+    'procedure',
     'then',
     'catch',
     'end',
-    'action',
 ];
 class Queue {
     constructor(logger, browser, config) {
@@ -33,7 +38,7 @@ class Queue {
         this.noopTimeout = false;
         this.tickTimeout = false;
         this.queue = [];
-        this.actionsPalette = {};
+        this.palette = {};
         // Internal actions
         this.thenFn = false;
         this.then = (ctx, fn) => {
@@ -52,14 +57,21 @@ class Queue {
             }
             this.browser.kill();
         };
-        this.action = (name, cb) => {
+        this.action = (p, name, cb) => {
             this.logger.debug('action registering %s -> %s', name, cb);
-            if (ProtectedActions.indexOf(name) !== -1) {
+            if (ProtectedActionsAndProcedures.indexOf(name) !== -1) {
                 this.logger.warning('action name %s is protected and cannot be overridden', name);
                 return;
             }
-            this.register(name, cb);
-            return this.getActions();
+            this.registerAction(name, cb);
+        };
+        this.procedure = (p, name, cb) => {
+            this.logger.debug('procedure registering %s -> %s', name, cb);
+            if (ProtectedActionsAndProcedures.indexOf(name) !== -1) {
+                this.logger.warning('procedure name %s is protected and cannot be overridden', name);
+                return;
+            }
+            this.registerProcedure(name, cb);
         };
         this.goto = (ctx, url) => {
             return ctx.host(url => {
@@ -199,17 +211,20 @@ class Queue {
             this.end();
         });
         Actions.forEach(name => {
-            this.register(name, this[name]);
+            this.registerAction(name, this[name]);
+        });
+        Procedures.forEach(name => {
+            this.registerProcedure(name, this[name]);
         });
     }
-    getActions() {
-        const actions = {
-            action: this.action,
-        };
-        for (const name in this.actionsPalette) {
-            actions[name] = this.actionsPalette[name].push;
+    getPalette() {
+        const palette = {};
+        for (const name in this.palette) {
+            const item = this.palette[name];
+            palette[name] = item[item.type === 'procedure' ? 'call' : 'push'];
         }
-        return actions;
+        Object.keys(palette);
+        return palette;
     }
     startNoop(name, params) {
         this.stopNoop();
@@ -239,13 +254,25 @@ class Queue {
             this.next();
         });
     }
-    register(name, fn, instant = false) {
+    registerAction(name, fn) {
         this.logger.debug('registering action %s', name);
-        this.actionsPalette[name] = {
+        this.palette[name] = {
+            type: 'action',
             push: (...params) => {
                 this.push(name, params);
                 this.logger.debug('pushing %s with %s', name, params);
-                return this.getActions();
+                return this.getPalette();
+            },
+            fn,
+        };
+    }
+    registerProcedure(name, fn) {
+        this.logger.debug('registering procedure %s', name);
+        this.palette[name] = {
+            type: 'procedure',
+            call: (...params) => {
+                fn(this.getPalette(), ...params);
+                return this.getPalette();
             },
             fn,
         };
@@ -287,15 +314,18 @@ class Queue {
     }
     exec(name, params) {
         if (this.isKilled) {
-            return;
+            return Promise.resolve();
         }
         this.logger.debug('exec %s -> %s', name, params);
-        if (!(name in this.actionsPalette)) {
+        if (!(name in this.palette)) {
             this.logger.debug('action %s doesnt exists', name);
-            return;
+            return Promise.resolve();
         }
-        const { fn } = this.actionsPalette[name];
-        return Promise.resolve(fn({
+        const item = this.palette[name];
+        if (item.type === 'procedure') {
+            return Promise.resolve();
+        }
+        return Promise.resolve(item.fn({
             host: this.browser.host,
             client: this.browser.client,
         }, ...params));

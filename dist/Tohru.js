@@ -32,5 +32,5 @@ exports.default = (options) => {
     }
     const browser = new Browser_1.default(logger, _options.electron, _options.requirePath);
     const queue = new Queue_1.default(logger, browser, _options);
-    return queue.getActions();
+    return queue.getPalette();
 };

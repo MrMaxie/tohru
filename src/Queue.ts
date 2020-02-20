@@ -12,9 +12,20 @@ type Actions = {
     [name: string]: Action<any>['fn'];
 };
 
-type Action<T> = {
-    push: (...params: T[]) => Actions;
-    fn: (ctx: Context, ...params: T[]) => void;
+type Action<T extends []> = {
+    type: 'action';
+    push: (...params: T) => Palette;
+    fn: (ctx: Context, ...params: T) => void | Promise<any>;
+};
+
+type Procedure<T extends []> = {
+    type: 'procedure';
+    call: (...params: T) => Palette;
+    fn: (palette: Palette, ...params: T) => void;
+}
+
+export type Palette = {
+    [name: string]: Action<any>['fn'] | Procedure<any>['fn'];
 };
 
 const Actions = [
@@ -32,11 +43,17 @@ const Actions = [
     'focus',
 ];
 
-const ProtectedActions = [
+const Procedures = [
+    'action',
+    'procedure',
+];
+
+const ProtectedActionsAndProcedures = [
+    'action',
+    'procedure',
     'then',
     'catch',
     'end',
-    'action',
 ];
 
 export default class Queue {
@@ -53,9 +70,9 @@ export default class Queue {
         params: any[];
     }> = [];
 
-    private actionsPalette: {
-        [name: string]: Action<any>;
-    } = {};
+    private palette: {
+        [name: string]: Action<any> | Procedure<any>;
+     } = {};
 
     constructor(
         private logger: Logger,
@@ -71,20 +88,28 @@ export default class Queue {
         });
 
         Actions.forEach(name => {
-            this.register(name, this[name]);
+            this.registerAction(name, this[name]);
+        });
+
+        Procedures.forEach(name => {
+            this.registerProcedure(name, this[name]);
         });
     }
 
-    getActions(): Actions {
-        const actions: Actions = {
-            action: this.action as unknown as Actions[string],
-        };
+    public getPalette(): Palette {
+        const palette: Palette = {};
 
-        for (const name in this.actionsPalette) {
-            actions[name] = this.actionsPalette[name].push;
+        for (const name in this.palette) {
+            const item = this.palette[name];
+
+            palette[name] = item[
+                item.type === 'procedure' ? 'call' : 'push'
+            ] as unknown as Action<any>['fn'] | Procedure<any>['fn'];
         }
 
-        return actions;
+        Object.keys(palette);
+
+        return palette;
     }
 
     startNoop(name?: string, params?: any[]) {
@@ -118,14 +143,28 @@ export default class Queue {
         });
     }
 
-    register(name: string, fn: (ctx: Context, ...params: any[]) => void, instant: boolean = false) {
+    registerAction(name: string, fn: Action<any>['fn']) {
         this.logger.debug('registering action %s', name);
 
-        this.actionsPalette[name] = {
+        this.palette[name] = {
+            type: 'action',
             push: (...params: any[]) => {
                 this.push(name, params);
                 this.logger.debug('pushing %s with %s', name, params);
-                return this.getActions();
+                return this.getPalette();
+            },
+            fn,
+        };
+    }
+
+    registerProcedure(name: string, fn: Procedure<any>['fn']) {
+        this.logger.debug('registering procedure %s', name);
+
+        this.palette[name] = {
+            type: 'procedure',
+            call: (...params: any[]) => {
+                fn(this.getPalette(), ...params);
+                return this.getPalette();
             },
             fn,
         };
@@ -176,19 +215,23 @@ export default class Queue {
 
     exec(name: string, params: any[]) {
         if (this.isKilled) {
-            return;
+            return Promise.resolve();
         }
 
         this.logger.debug('exec %s -> %s', name, params);
 
-        if (!(name in this.actionsPalette)) {
+        if (!(name in this.palette)) {
             this.logger.debug('action %s doesnt exists', name);
-            return;
+            return Promise.resolve();
         }
 
-        const { fn } = this.actionsPalette[name];
+        const item = this.palette[name];
 
-        return Promise.resolve(fn({
+        if (item.type === 'procedure') {
+            return Promise.resolve();
+        }
+
+        return Promise.resolve(item.fn({
             host: this.browser.host,
             client: this.browser.client,
         }, ...params));
@@ -217,14 +260,22 @@ export default class Queue {
         this.browser.kill();
     }
 
-    action = (name: string, cb: (ctx: Context, ...params: any[]) => void) => {
+    action = (p: Palette, name: string, cb: (ctx: Context, ...params: any[]) => void) => {
         this.logger.debug('action registering %s -> %s', name, cb);
-        if (ProtectedActions.indexOf(name) !== -1) {
+        if (ProtectedActionsAndProcedures.indexOf(name) !== -1) {
             this.logger.warning('action name %s is protected and cannot be overridden', name);
             return;
         }
-        this.register(name, cb);
-        return this.getActions();
+        this.registerAction(name, cb);
+    }
+
+    procedure = (p: Palette, name: string, cb: (p: Palette, ...params: any[]) => void) => {
+        this.logger.debug('procedure registering %s -> %s', name, cb);
+        if (ProtectedActionsAndProcedures.indexOf(name) !== -1) {
+            this.logger.warning('procedure name %s is protected and cannot be overridden', name);
+            return;
+        }
+        this.registerProcedure(name, cb);
     }
 
     goto = (ctx: Context, url: string) => {

@@ -11,10 +11,5 @@ export declare type TohruOptions = {
     requirePath?: string;
     assetsPath?: string;
 };
-declare const _default: (options: TohruOptions) => {
-    [name: string]: (ctx: {
-        host: <T extends any, R extends any>(fn: (...params: T[]) => R | PromiseLike<R>, ...params: T[]) => Promise<R>;
-        client: <T_1 extends any, R_1 extends any>(fn: (...params: T_1[]) => R_1 | PromiseLike<R_1>, ...params: T_1[]) => Promise<R_1>;
-    }, ...params: any[]) => void;
-};
+declare const _default: (options: TohruOptions) => import("./Queue").Palette;
 export default _default;
