@@ -134,7 +134,7 @@ class Queue {
             return Promise.resolve();
         };
         this.click = (ctx, selector) => {
-            return ctx.client((target) => {
+            ctx.client((target) => {
                 const el = document.body.querySelector(target);
                 if (el) {
                     el.click();
@@ -142,14 +142,14 @@ class Queue {
             }, selector);
         };
         this.clickAll = (ctx, selector) => {
-            return ctx.client((target) => {
+            ctx.client((target) => {
                 Array.from(document.body.querySelectorAll(target)).forEach((el) => {
                     el.click();
                 });
             }, selector);
         };
         this.authentication = (ctx, login, password) => {
-            return ctx.host((l, p) => {
+            ctx.host((l, p) => {
                 app.once('login', (e, w, d, a, cb) => {
                     e.preventDefault();
                     cb(l, p);
@@ -157,7 +157,7 @@ class Queue {
             }, login, password);
         };
         this.select = (ctx, selector, option) => {
-            return ctx.client((target) => {
+            ctx.client((target) => {
                 const el = document.body.querySelector(target);
                 if (!el) {
                     return;

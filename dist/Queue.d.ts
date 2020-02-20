@@ -48,10 +48,10 @@ export default class Queue {
     goto: (ctx: Context, url: string) => Promise<unknown>;
     type: (ctx: Context, selector: string, text: string) => Promise<unknown>;
     wait: (ctx: Context, target?: string | number) => Promise<unknown>;
-    click: (ctx: Context, selector: string) => Promise<void>;
-    clickAll: (ctx: Context, selector: string) => Promise<void>;
-    authentication: (ctx: Context, login: string, password: string) => Promise<void>;
-    select: (ctx: Context, selector: string, option: string | number) => Promise<void>;
+    click: (ctx: Context, selector: string) => void;
+    clickAll: (ctx: Context, selector: string) => void;
+    authentication: (ctx: Context, login: string, password: string) => void;
+    select: (ctx: Context, selector: string, option: string | number) => void;
     upload: (ctx: Context, selector: string, ...files: string[]) => Promise<unknown>;
 }
 export {};
