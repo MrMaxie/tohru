@@ -179,7 +179,7 @@ export default class Queue {
             return;
         }
 
-        this.logger.debug('action %s -> %s', name, params);
+        this.logger.debug('exec %s -> %s', name, params);
 
         if (!(name in this.actionsPalette)) {
             this.logger.debug('action %s doesnt exists', name);
@@ -229,8 +229,6 @@ export default class Queue {
 
     goto = (ctx: Context, url: string) => {
         return ctx.host(url => {
-            console.log('hello from host', url);
-
             (window as any).loadURL(url);
 
             return new Promise(res => {
