@@ -67,7 +67,7 @@ class Logger extends events_1.default {
         if (type < this.level) {
             return;
         }
-        this.emit('logLeveled', type, message, ...args);
+        this.emit('logLeveled', type, this.format(message, ...args));
         this.emit('log', this.getName(type), message, ...args);
     }
     critical(message, ...args) {

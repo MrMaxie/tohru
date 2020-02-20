@@ -1,10 +1,20 @@
 const electron = require('electron');
 const { Tohru } = require('./dist/main');
 
-Tohru({
+const t = Tohru({
     electron,
+    logLevel: 0,
     timeout: 10000,
-})
+    defaultLogger: true,
+});
+
+console.log(t.action.toString());
+
+t
+    .action('test', () => {
+        console.log('test!');
+    })
+    .test()
     .goto('https://github.com/')
     .wait(1000)
     .goto('https://google.com/')

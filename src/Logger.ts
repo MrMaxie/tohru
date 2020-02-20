@@ -64,14 +64,14 @@ export default class Logger extends EventEmitter {
         }
 
         if (type >= this.throwLevel) {
-            throw new Error(this.formatWoColors(message, ...args));
+            throw new Error(this.formatWoColors(message, ...args))
         }
 
         if (type < this.level) {
             return;
         }
 
-        this.emit('logLeveled', type, message, ...args);
+        this.emit('logLeveled', type, this.format(message, ...args));
         this.emit('log', this.getName(type), message, ...args);
     }
 

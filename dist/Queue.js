@@ -7,7 +7,6 @@ const Actions = [
     'then',
     'catch',
     'end',
-    'action',
     'goto',
     'type',
     'wait',
@@ -53,12 +52,14 @@ class Queue {
             }
             this.browser.kill();
         };
-        this.action = (ctx, name, cb) => {
+        this.action = (name, cb) => {
+            this.logger.debug('action registering %s -> %s', name, cb);
             if (ProtectedActions.indexOf(name) !== -1) {
                 this.logger.warning('action name %s is protected and cannot be overridden', name);
                 return;
             }
             this.register(name, cb);
+            return this.getActions();
         };
         this.goto = (ctx, url) => {
             return ctx.host(url => {
@@ -202,8 +203,10 @@ class Queue {
             this.register(name, this[name]);
         });
     }
-    get actions() {
-        const actions = {};
+    getActions() {
+        const actions = {
+            action: this.action,
+        };
         for (const name in this.actionsPalette) {
             actions[name] = this.actionsPalette[name].push;
         }
@@ -237,18 +240,19 @@ class Queue {
             this.next();
         });
     }
-    register(name, fn) {
+    register(name, fn, instant = false) {
         this.logger.debug('registering action %s', name);
         this.actionsPalette[name] = {
             push: (...params) => {
                 this.push(name, params);
-                return this.actions;
+                this.logger.debug('pushing %s with %s', name, params);
+                return this.getActions();
             },
             fn,
         };
     }
     push(name, params) {
-        this.logger.debug('pusing action %s -> %s', name, params);
+        this.logger.debug('pushing action %s -> %s', name, params);
         this.queue.push({ name, params });
         this.next();
     }

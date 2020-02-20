@@ -21,7 +21,6 @@ const Actions = [
     'then',
     'catch',
     'end',
-    'action',
     'goto',
     'type',
     'wait',
@@ -76,8 +75,10 @@ export default class Queue {
         });
     }
 
-    get actions(): Actions {
-        const actions = {};
+    getActions(): Actions {
+        const actions: Actions = {
+            action: this.action as unknown as Actions[string],
+        };
 
         for (const name in this.actionsPalette) {
             actions[name] = this.actionsPalette[name].push;
@@ -117,20 +118,21 @@ export default class Queue {
         });
     }
 
-    register(name: string, fn: (ctx: Context, ...params: any[]) => void) {
+    register(name: string, fn: (ctx: Context, ...params: any[]) => void, instant: boolean = false) {
         this.logger.debug('registering action %s', name);
 
         this.actionsPalette[name] = {
             push: (...params: any[]) => {
                 this.push(name, params);
-                return this.actions;
+                this.logger.debug('pushing %s with %s', name, params);
+                return this.getActions();
             },
             fn,
         };
     }
 
     push(name: string, params: any[]) {
-        this.logger.debug('pusing action %s -> %s', name, params);
+        this.logger.debug('pushing action %s -> %s', name, params);
 
         this.queue.push({ name, params });
         this.next();
@@ -215,12 +217,14 @@ export default class Queue {
         this.browser.kill();
     }
 
-    action = (ctx: Context, name: string, cb: (ctx: Context, ...params: any[]) => void) => {
+    action = (name: string, cb: (ctx: Context, ...params: any[]) => void) => {
+        this.logger.debug('action registering %s -> %s', name, cb);
         if (ProtectedActions.indexOf(name) !== -1) {
             this.logger.warning('action name %s is protected and cannot be overridden', name);
             return;
         }
         this.register(name, cb);
+        return this.getActions();
     }
 
     goto = (ctx: Context, url: string) => {

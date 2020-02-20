@@ -45,5 +45,5 @@ export default (options: TohruOptions) => {
 
     const queue = new Queue(logger, browser, _options);
 
-    return queue.actions;
+    return queue.getActions();
 }
