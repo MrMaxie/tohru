@@ -349,7 +349,7 @@ export default class Queue {
     }
 
     click = (ctx: Context, selector: string) => {
-        return ctx.client((target: string) => {
+        ctx.client((target: string) => {
             const el: HTMLElement = document.body.querySelector(target);
 
             if (el) {
@@ -359,7 +359,7 @@ export default class Queue {
     }
 
     clickAll = (ctx: Context, selector: string) => {
-        return ctx.client((target: string) => {
+        ctx.client((target: string) => {
             Array.from(document.body.querySelectorAll(target)).forEach((el: HTMLElement) => {
                 el.click();
             });
@@ -367,7 +367,7 @@ export default class Queue {
     }
 
     authentication = (ctx: Context, login: string, password: string) => {
-        return ctx.host((l: string, p: string) => {
+        ctx.host((l: string, p: string) => {
             app.once('login', (e, w, d, a, cb) => {
                 e.preventDefault();
                 cb(l, p);
@@ -376,7 +376,7 @@ export default class Queue {
     }
 
     select = (ctx: Context, selector: string, option: string | number) => {
-        return ctx.client((target: string) => {
+        ctx.client((target: string) => {
             const el: HTMLSelectElement = document.body.querySelector(target);
 
             if (!el) {

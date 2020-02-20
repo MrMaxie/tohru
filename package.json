@@ -1,6 +1,6 @@
 {
   "name": "tohru",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Extandable Electron flow desinger",
   "main": "dist/main.js",
   "devDependencies": {
