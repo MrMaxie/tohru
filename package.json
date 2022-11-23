@@ -40,7 +40,7 @@
   "dependencies": {
     "portfinder": "1.0.25",
     "require-at": "1.0.4",
-    "socket.io": "2.3.0",
+    "socket.io": "2.5.0",
     "socket.io-client": "2.3.0"
   }
 }
